@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import * as XLSX from 'xlsx'
 import { getRegistros, completarRegistro, type LoadingRecord } from '../api'
 
 const ESTADO_LABEL: Record<string, string> = {
@@ -73,6 +74,30 @@ export function ListaScreen({
   const visibles = filtro
     ? registros.filter(r => r.status === filtro)
     : registros
+
+  const exportarExcel = () => {
+    const filas = visibles.map(r => ({
+      'Fecha':     fmtFecha(r.created_at),
+      'Referencia': r.reference_code,
+      'Estado':    ESTADO_LABEL[r.status] ?? r.status,
+      'Patente':   r.license_plate ?? '—',
+      'Conductor': r.driver_name ?? '—',
+      'Empresa':   r.transport_company_name ?? '—',
+      'Bultos':    r.total_bultos,
+      'Neto (kg)': parseFloat(r.total_net_kg) || 0,
+    }))
+    const hoja = XLSX.utils.json_to_sheet(filas)
+    // Ancho de columnas
+    hoja['!cols'] = [
+      { wch: 12 }, { wch: 22 }, { wch: 12 },
+      { wch: 10 }, { wch: 28 }, { wch: 28 },
+      { wch: 8 },  { wch: 12 },
+    ]
+    const libro = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(libro, hoja, 'Carguíos')
+    const nombre = `carguios${filtro ? `_${filtro.toLowerCase()}` : ''}_${new Date().toISOString().slice(0,10)}.xlsx`
+    XLSX.writeFile(libro, nombre)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -175,10 +200,17 @@ export function ListaScreen({
         ))}
       </main>
 
-      {/* Refresh */}
-      <footer className="pb-6 px-4">
-        <button onClick={cargar} className="btn-secondary text-sm">
+      {/* Acciones footer */}
+      <footer className="pb-6 px-4 flex gap-2">
+        <button onClick={cargar} className="btn-secondary text-sm flex-none">
           ↻ Actualizar
+        </button>
+        <button
+          onClick={exportarExcel}
+          disabled={visibles.length === 0}
+          className="flex-1 btn-secondary text-sm disabled:opacity-40"
+        >
+          📥 Excel ({visibles.length})
         </button>
       </footer>
     </div>

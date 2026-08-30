@@ -61,6 +61,10 @@ export type LoadingRecord = {
   sale_id: number | null
   created_at: string
   completed_at: string | null
+  // Primer vehículo (para lista y Excel)
+  license_plate: string | null
+  driver_name: string | null
+  transport_company_name: string | null
 }
 
 export type LoadingLine = {
