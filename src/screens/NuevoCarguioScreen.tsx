@@ -5,6 +5,7 @@ import {
 } from '../api'
 
 const TIPOS_BULTO = ['FARDO', 'SACO', 'CAJA', 'PALLET', 'OTRO'] as const
+const TIPOS_BULTO_CONTENIDO = ['FARDO', 'SACO', 'CAJA', 'OTRO'] as const
 type TipoBulto = typeof TIPOS_BULTO[number]
 
 const lineaVacia = (): LoadingLine => ({
@@ -13,6 +14,8 @@ const lineaVacia = (): LoadingLine => ({
   qty_bultos: 0,
   weight_per_bulto_kg: 0,
   gross_weight_per_bulto_kg: 0,
+  bultos_por_pallet: undefined,
+  tipo_bulto_contenido: undefined,
 })
 
 const vehiculoVacio = (): LoadingVehicle => ({
@@ -23,10 +26,11 @@ const vehiculoVacio = (): LoadingVehicle => ({
   lines: [lineaVacia()],
 })
 
-function calcNeto(l: LoadingLine) { return (l.qty_bultos * l.weight_per_bulto_kg) || 0 }
+function multiplicador(l: LoadingLine) { return l.tipo_bulto === 'PALLET' ? (l.bultos_por_pallet || 1) : 1 }
+function calcNeto(l: LoadingLine) { return (l.qty_bultos * multiplicador(l) * l.weight_per_bulto_kg) || 0 }
 function calcBruto(l: LoadingLine) {
   const g = l.gross_weight_per_bulto_kg || l.weight_per_bulto_kg
-  return (l.qty_bultos * g) || 0
+  return (l.qty_bultos * multiplicador(l) * g) || 0
 }
 
 export function NuevoCarguioScreen({
@@ -80,6 +84,9 @@ export function NuevoCarguioScreen({
         if (!l.weight_per_bulto_kg || l.weight_per_bulto_kg <= 0) {
           setErrorGuardar(`Camion ${vi + 1}, linea ${li + 1}: peso neto debe ser mayor a 0.`); return
         }
+        if (l.tipo_bulto === 'PALLET' && (!l.bultos_por_pallet || l.bultos_por_pallet <= 0)) {
+          setErrorGuardar(`Camion ${vi + 1}, linea ${li + 1}: indique cuantos bultos trae cada pallet.`); return
+        }
       }
     }
     setErrorGuardar(''); setGuardando(true)
@@ -96,6 +103,8 @@ export function NuevoCarguioScreen({
             qty_bultos: Number(l.qty_bultos),
             weight_per_bulto_kg: Number(l.weight_per_bulto_kg),
             gross_weight_per_bulto_kg: Number(l.gross_weight_per_bulto_kg) || Number(l.weight_per_bulto_kg),
+            bultos_por_pallet: l.tipo_bulto === 'PALLET' ? (l.bultos_por_pallet ?? undefined) : undefined,
+            tipo_bulto_contenido: l.tipo_bulto === 'PALLET' ? (l.tipo_bulto_contenido ?? undefined) : undefined,
           })),
         })),
       })
@@ -218,12 +227,16 @@ export function NuevoCarguioScreen({
                       <div>
                         <label className="label text-xs">Tipo bulto *</label>
                         <select className="input text-sm" value={l.tipo_bulto}
-                          onChange={e => setLine(vi, li, { tipo_bulto: e.target.value as TipoBulto })}>
+                          onChange={e => setLine(vi, li, {
+                            tipo_bulto: e.target.value as TipoBulto,
+                            bultos_por_pallet: undefined,
+                            tipo_bulto_contenido: undefined,
+                          })}>
                           {TIPOS_BULTO.map(t => <option key={t}>{t}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="label text-xs">Cantidad *</label>
+                        <label className="label text-xs">{l.tipo_bulto === 'PALLET' ? 'N° pallets *' : 'Cantidad *'}</label>
                         <input className="input text-sm" type="number" inputMode="numeric" min="1"
                           placeholder="0"
                           value={l.qty_bultos || ''}
@@ -231,16 +244,37 @@ export function NuevoCarguioScreen({
                       </div>
                     </div>
 
+                    {/* Campos extra solo para PALLET */}
+                    {l.tipo_bulto === 'PALLET' && (
+                      <div className="grid grid-cols-2 gap-2 bg-blue-50 rounded-lg p-2">
+                        <div>
+                          <label className="label text-xs">Tipo bulto dentro</label>
+                          <select className="input text-sm" value={l.tipo_bulto_contenido ?? ''}
+                            onChange={e => setLine(vi, li, { tipo_bulto_contenido: e.target.value || undefined })}>
+                            <option value="">Seleccionar</option>
+                            {TIPOS_BULTO_CONTENIDO.map(t => <option key={t}>{t}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="label text-xs">Bultos por pallet *</label>
+                          <input className="input text-sm" type="number" inputMode="numeric" min="1"
+                            placeholder="0"
+                            value={l.bultos_por_pallet || ''}
+                            onChange={e => setLine(vi, li, { bultos_por_pallet: Number(e.target.value) || undefined })} />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="label text-xs">Peso neto/u (kg) *</label>
+                        <label className="label text-xs">Peso neto/bulto (kg) *</label>
                         <input className="input text-sm" type="number" inputMode="decimal" step="0.001"
                           placeholder="0.000"
                           value={l.weight_per_bulto_kg || ''}
                           onChange={e => setLine(vi, li, { weight_per_bulto_kg: Number(e.target.value) })} />
                       </div>
                       <div>
-                        <label className="label text-xs">Peso bruto/u (kg)</label>
+                        <label className="label text-xs">Peso bruto/bulto (kg)</label>
                         <input className="input text-sm" type="number" inputMode="decimal" step="0.001"
                           placeholder="= neto si vacio"
                           value={l.gross_weight_per_bulto_kg || ''}
@@ -249,8 +283,13 @@ export function NuevoCarguioScreen({
                     </div>
 
                     {calcNeto(l) > 0 && (
-                      <div className="text-xs text-[#00406A] font-semibold">
-                        Neto: {calcNeto(l).toFixed(1)} kg / Bruto: {calcBruto(l).toFixed(1)} kg
+                      <div className="text-xs text-[#00406A] font-semibold space-y-0.5">
+                        {l.tipo_bulto === 'PALLET' && l.bultos_por_pallet && l.bultos_por_pallet > 0 && (
+                          <div className="text-gray-500">
+                            {l.qty_bultos} pallets × {l.bultos_por_pallet} = {l.qty_bultos * l.bultos_por_pallet} bultos
+                          </div>
+                        )}
+                        <div>Neto: {calcNeto(l).toFixed(1)} kg / Bruto: {calcBruto(l).toFixed(1)} kg</div>
                       </div>
                     )}
                   </div>

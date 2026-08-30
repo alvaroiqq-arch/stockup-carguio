@@ -71,6 +71,8 @@ export type LoadingLine = {
   qty_bultos: number
   weight_per_bulto_kg: number
   gross_weight_per_bulto_kg: number
+  bultos_por_pallet?: number       // solo cuando tipo_bulto === 'PALLET'
+  tipo_bulto_contenido?: string    // tipo de bulto dentro del pallet
   total_net_kg?: string
   total_gross_kg?: string
   notes?: string
