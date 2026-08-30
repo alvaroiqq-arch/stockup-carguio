@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* Variables de marca Stock-Up */
+:root {
+  --azul: #00406A;
+  --azul-claro: #e8f0f7;
+  --rojo: #C0392B;
+  --gris: #6b7280;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Input base móvil */
+.input {
+  @apply w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white;
+}
+
+.btn-primary {
+  @apply w-full bg-[#00406A] text-white font-semibold py-3 rounded-xl text-base active:opacity-80 transition-opacity;
+}
+
+.btn-secondary {
+  @apply w-full border border-[#00406A] text-[#00406A] font-semibold py-3 rounded-xl text-base active:opacity-80 transition-opacity bg-white;
+}
+
+.btn-danger {
+  @apply w-full bg-red-600 text-white font-semibold py-3 rounded-xl text-base active:opacity-80 transition-opacity;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4;
+}
+
+.label {
+  @apply block text-sm font-semibold text-gray-700 mb-1;
+}
+
+.badge {
+  @apply inline-block px-2 py-0.5 rounded-full text-xs font-semibold;
+}
