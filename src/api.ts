@@ -93,8 +93,8 @@ export type LoadingVehicle = {
 }
 
 export type NewRecord = {
-  reference_code: string
-  partner_id: number
+  reference_code?: string   // se auto-genera en el backend si no viene
+  partner_id?: number | null  // el dueño lo asigna al generar la factura
   country_destination?: string
   destination_port?: string
   embarkation_port?: string
