@@ -125,6 +125,25 @@ export const getTransporte = () => apiFetch<TransporteData>('/carguio/transporte
 
 export const getRegistros = () => apiFetch<LoadingRecord[]>('/carguio/registros')
 
+export type ExportRow = {
+  created_at: string
+  reference_code: string
+  status: string
+  license_plate: string | null
+  driver_name: string | null
+  transport_company_name: string | null
+  line_number: number
+  product_description: string
+  tipo_bulto: string
+  qty_bultos: number
+  bultos_por_pallet: number | null
+  tipo_bulto_contenido: string | null
+  weight_per_bulto_kg: string
+  total_net_kg: string
+}
+
+export const getExport = () => apiFetch<ExportRow[]>('/carguio/export')
+
 export const getRegistro = (id: number) => apiFetch<LoadingRecord & { vehicles: LoadingVehicle[] }>(`/carguio/registros/${id}`)
 
 export const crearRegistro = (data: NewRecord) =>

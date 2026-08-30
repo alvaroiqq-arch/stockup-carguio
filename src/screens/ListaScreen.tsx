@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import * as XLSX from 'xlsx'
-import { getRegistros, completarRegistro, type LoadingRecord } from '../api'
+import { getRegistros, getExport, completarRegistro, type LoadingRecord } from '../api'
 
 const ESTADO_LABEL: Record<string, string> = {
   BORRADOR: 'Borrador',
@@ -75,28 +75,61 @@ export function ListaScreen({
     ? registros.filter(r => r.status === filtro)
     : registros
 
-  const exportarExcel = () => {
-    const filas = visibles.map(r => ({
-      'Fecha':     fmtFecha(r.created_at),
-      'Referencia': r.reference_code,
-      'Estado':    ESTADO_LABEL[r.status] ?? r.status,
-      'Patente':   r.license_plate ?? '—',
-      'Conductor': r.driver_name ?? '—',
-      'Empresa':   r.transport_company_name ?? '—',
-      'Bultos':    r.total_bultos,
-      'Neto (kg)': parseFloat(r.total_net_kg) || 0,
-    }))
-    const hoja = XLSX.utils.json_to_sheet(filas)
-    // Ancho de columnas
-    hoja['!cols'] = [
-      { wch: 12 }, { wch: 22 }, { wch: 12 },
-      { wch: 10 }, { wch: 28 }, { wch: 28 },
-      { wch: 8 },  { wch: 12 },
-    ]
-    const libro = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(libro, hoja, 'Carguíos')
-    const nombre = `carguios${filtro ? `_${filtro.toLowerCase()}` : ''}_${new Date().toISOString().slice(0,10)}.xlsx`
-    XLSX.writeFile(libro, nombre)
+  const [exportando, setExportando] = useState(false)
+
+  const exportarExcel = async () => {
+    setExportando(true)
+    try {
+      const datos = await getExport()
+
+      // Filtrar por estado si hay filtro activo
+      const codigosVisibles = new Set(visibles.map(r => r.reference_code))
+      const filtrados = datos.filter(d => codigosVisibles.has(d.reference_code))
+
+      const ESTADO_ES: Record<string, string> = {
+        BORRADOR: 'Borrador', EN_PROCESO: 'En proceso',
+        COMPLETADO: 'Completado', FACTURADO: 'Facturado', ANULADO: 'Anulado',
+      }
+
+      const filas = filtrados.map(d => {
+        const esPallet = d.tipo_bulto === 'PALLET'
+        const bpp = d.bultos_por_pallet ?? 1
+        const totalBultos = esPallet ? d.qty_bultos * bpp : d.qty_bultos
+        return {
+          'Fecha':            fmtFecha(d.created_at),
+          'Referencia':       d.reference_code,
+          'Estado':           ESTADO_ES[d.status] ?? d.status,
+          'Patente':          d.license_plate ?? '—',
+          'Conductor':        d.driver_name ?? '—',
+          'Empresa':          d.transport_company_name ?? '—',
+          'Producto':         d.product_description,
+          'Tipo bulto':       d.tipo_bulto,
+          'N° pallets/bultos': d.qty_bultos,
+          'Bultos por pallet': esPallet ? bpp : '—',
+          'Tipo contenido':   d.tipo_bulto_contenido ?? '—',
+          'Total bultos':     totalBultos,
+          'Peso neto/bulto (kg)': parseFloat(d.weight_per_bulto_kg) || 0,
+          'Total neto (kg)':  parseFloat(d.total_net_kg) || 0,
+        }
+      })
+
+      const hoja = XLSX.utils.json_to_sheet(filas)
+      hoja['!cols'] = [
+        { wch: 12 }, { wch: 22 }, { wch: 12 },
+        { wch: 10 }, { wch: 28 }, { wch: 28 },
+        { wch: 30 }, { wch: 12 }, { wch: 18 },
+        { wch: 16 }, { wch: 14 }, { wch: 12 },
+        { wch: 20 }, { wch: 16 },
+      ]
+      const libro = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(libro, hoja, 'Carguíos')
+      const nombre = `carguios${filtro ? `_${filtro.toLowerCase()}` : ''}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      XLSX.writeFile(libro, nombre)
+    } catch (e) {
+      alert('Error al exportar: ' + (e as Error).message)
+    } finally {
+      setExportando(false)
+    }
   }
 
   return (
@@ -204,10 +237,10 @@ export function ListaScreen({
       <footer className="pb-6 px-4 space-y-2">
         <button
           onClick={exportarExcel}
-          disabled={visibles.length === 0}
+          disabled={visibles.length === 0 || exportando}
           className="w-full bg-green-700 text-white font-bold py-4 rounded-xl text-base active:opacity-70 disabled:opacity-40"
         >
-          📥 Exportar Excel ({visibles.length} registros)
+          {exportando ? 'Generando...' : `📥 Exportar Excel (${visibles.length} registros)`}
         </button>
         <button onClick={cargar} className="btn-secondary text-sm">
           ↻ Actualizar
