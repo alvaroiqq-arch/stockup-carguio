@@ -18,6 +18,9 @@ const lineaVacia = (): LoadingLine => ({
   tipo_bulto_contenido: undefined,
 })
 
+type ModoPeso = 'bulto' | 'total'
+type PesoTotal = { neto: string; bruto: string }
+
 const vehiculoVacio = (): LoadingVehicle => ({
   transport_company_id: undefined,
   driver_id: undefined,
@@ -49,6 +52,11 @@ export function NuevoCarguioScreen({
   const [errorGuardar, setErrorGuardar] = useState('')
   const [vehiculo, setVehiculoState] = useState<LoadingVehicle>(registroInicial ?? vehiculoVacio())
 
+  // ── Modo de ingreso de pesos: 'bulto' (por unidad) o 'total' (suma total)
+  const nLineas = (registroInicial ?? vehiculoVacio()).lines.length
+  const [modosPeso, setModosPeso] = useState<ModoPeso[]>(Array(nLineas).fill('bulto'))
+  const [totalPesos, setTotalPesos] = useState<PesoTotal[]>(Array(nLineas).fill({ neto: '', bruto: '' }))
+
   useEffect(() => {
     getTransporte()
       .then(setTransporte)
@@ -65,14 +73,28 @@ export function NuevoCarguioScreen({
       lines: prev.lines.map((l, j) => j === li ? { ...l, ...patch } : l),
     }))
 
-  const agregarLinea = () =>
+  const agregarLinea = () => {
     setVehiculoState(prev => ({ ...prev, lines: [...prev.lines, lineaVacia()] }))
+    setModosPeso(prev => [...prev, 'bulto'])
+    setTotalPesos(prev => [...prev, { neto: '', bruto: '' }])
+  }
 
-  const eliminarLinea = (li: number) =>
+  const eliminarLinea = (li: number) => {
     setVehiculoState(prev => ({
       ...prev,
       lines: prev.lines.length > 1 ? prev.lines.filter((_, j) => j !== li) : prev.lines,
     }))
+    if (vehiculo.lines.length > 1) {
+      setModosPeso(prev => prev.filter((_, j) => j !== li))
+      setTotalPesos(prev => prev.filter((_, j) => j !== li))
+    }
+  }
+
+  const setModoPeso = (li: number, modo: ModoPeso) =>
+    setModosPeso(prev => prev.map((m, i) => i === li ? modo : m))
+
+  const patchTotalPeso = (li: number, patch: Partial<PesoTotal>) =>
+    setTotalPesos(prev => prev.map((p, i) => i === li ? { ...p, ...patch } : p))
 
   // Seleccionar camion por patente → auto-llenar empresa y conductor desde asignacion
   const handlePatente = (truckId: number | undefined) => {
@@ -90,14 +112,21 @@ export function NuevoCarguioScreen({
 
   const handleGuardar = async () => {
     for (const [li, l] of vehiculo.lines.entries()) {
+      const modo = modosPeso[li] ?? 'bulto'
       if (!l.product_description.trim()) {
         setErrorGuardar(`Línea ${li + 1}: falta la descripción.`); return
       }
       if (!l.qty_bultos || l.qty_bultos <= 0) {
         setErrorGuardar(`Línea ${li + 1}: cantidad debe ser mayor a 0.`); return
       }
-      if (!l.weight_per_bulto_kg || l.weight_per_bulto_kg <= 0) {
-        setErrorGuardar(`Línea ${li + 1}: peso neto debe ser mayor a 0.`); return
+      if (modo === 'total') {
+        if (!Number(totalPesos[li]?.neto) || Number(totalPesos[li]?.neto) <= 0) {
+          setErrorGuardar(`Línea ${li + 1}: ingresa el peso neto total.`); return
+        }
+      } else {
+        if (!l.weight_per_bulto_kg || l.weight_per_bulto_kg <= 0) {
+          setErrorGuardar(`Línea ${li + 1}: peso neto debe ser mayor a 0.`); return
+        }
       }
       if (l.tipo_bulto === 'PALLET' && (!l.bultos_por_pallet || l.bultos_por_pallet <= 0)) {
         setErrorGuardar(`Línea ${li + 1}: indique cuántos bultos trae cada pallet.`); return
@@ -110,15 +139,29 @@ export function NuevoCarguioScreen({
         driver_id: vehiculo.driver_id,
         truck_id: vehiculo.truck_id,
         observations: vehiculo.observations?.trim() || undefined,
-        lines: vehiculo.lines.map(l => ({
-          product_description: l.product_description.trim(),
-          tipo_bulto: l.tipo_bulto,
-          qty_bultos: Number(l.qty_bultos),
-          weight_per_bulto_kg: Number(l.weight_per_bulto_kg),
-          gross_weight_per_bulto_kg: Number(l.gross_weight_per_bulto_kg) || Number(l.weight_per_bulto_kg),
-          bultos_por_pallet: l.tipo_bulto === 'PALLET' ? (l.bultos_por_pallet ?? undefined) : undefined,
-          tipo_bulto_contenido: l.tipo_bulto === 'PALLET' ? (l.tipo_bulto_contenido ?? undefined) : undefined,
-        })),
+        lines: vehiculo.lines.map((l, li) => {
+          const modo = modosPeso[li] ?? 'bulto'
+          // Unidades totales (para PALLET: pallets × bultos/pallet; resto: qty_bultos)
+          const unidades = l.tipo_bulto === 'PALLET'
+            ? (Number(l.qty_bultos) * (Number(l.bultos_por_pallet) || 1))
+            : Number(l.qty_bultos)
+          // En modo total: calcular peso por bulto desde el total ingresado
+          const pesoNeto = modo === 'total'
+            ? Number(totalPesos[li]?.neto) / (unidades || 1)
+            : Number(l.weight_per_bulto_kg)
+          const pesoBruto = modo === 'total'
+            ? (Number(totalPesos[li]?.bruto) || Number(totalPesos[li]?.neto)) / (unidades || 1)
+            : (Number(l.gross_weight_per_bulto_kg) || Number(l.weight_per_bulto_kg))
+          return {
+            product_description: l.product_description.trim(),
+            tipo_bulto: l.tipo_bulto,
+            qty_bultos: Number(l.qty_bultos),
+            weight_per_bulto_kg: pesoNeto,
+            gross_weight_per_bulto_kg: pesoBruto,
+            bultos_por_pallet: l.tipo_bulto === 'PALLET' ? (l.bultos_por_pallet ?? undefined) : undefined,
+            tipo_bulto_contenido: l.tipo_bulto === 'PALLET' ? (l.tipo_bulto_contenido ?? undefined) : undefined,
+          }
+        }),
       }],
     }
     try {
@@ -289,33 +332,86 @@ export function NuevoCarguioScreen({
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="label text-xs">Peso neto/bulto (kg) *</label>
-                    <input className="input text-sm" type="number" inputMode="decimal" step="0.001"
-                      placeholder="0.000"
-                      value={l.weight_per_bulto_kg || ''}
-                      onChange={e => patchLinea(li, { weight_per_bulto_kg: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <label className="label text-xs">Peso bruto/bulto (kg)</label>
-                    <input className="input text-sm" type="number" inputMode="decimal" step="0.001"
-                      placeholder="= neto si vacío"
-                      value={l.gross_weight_per_bulto_kg || ''}
-                      onChange={e => patchLinea(li, { gross_weight_per_bulto_kg: Number(e.target.value) })} />
-                  </div>
+                {/* Toggle modo peso */}
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs font-semibold">
+                  {(['bulto', 'total'] as ModoPeso[]).map(m => (
+                    <button key={m} type="button"
+                      onClick={() => setModoPeso(li, m)}
+                      className={`flex-1 py-1.5 transition-colors ${
+                        (modosPeso[li] ?? 'bulto') === m
+                          ? 'bg-[#00406A] text-white'
+                          : 'bg-white text-gray-500'
+                      }`}>
+                      {m === 'bulto' ? 'Peso por bulto' : 'Peso total'}
+                    </button>
+                  ))}
                 </div>
 
-                {calcNeto(l) > 0 && (
-                  <div className="text-xs text-[#00406A] font-semibold space-y-0.5">
-                    {l.tipo_bulto === 'PALLET' && l.bultos_por_pallet && l.bultos_por_pallet > 0 && (
-                      <div className="text-gray-500">
-                        {l.qty_bultos} pallets × {l.bultos_por_pallet} = {l.qty_bultos * l.bultos_por_pallet} bultos
-                      </div>
-                    )}
-                    <div>Neto: {calcNeto(l).toFixed(1)} kg / Bruto: {calcBruto(l).toFixed(1)} kg</div>
+                {(modosPeso[li] ?? 'bulto') === 'bulto' ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="label text-xs">Neto/bulto (kg) *</label>
+                      <input className="input text-sm" type="number" inputMode="decimal" step="0.001"
+                        placeholder="0.000"
+                        value={l.weight_per_bulto_kg || ''}
+                        onChange={e => patchLinea(li, { weight_per_bulto_kg: Number(e.target.value) })} />
+                    </div>
+                    <div>
+                      <label className="label text-xs">Bruto/bulto (kg)</label>
+                      <input className="input text-sm" type="number" inputMode="decimal" step="0.001"
+                        placeholder="= neto si vacío"
+                        value={l.gross_weight_per_bulto_kg || ''}
+                        onChange={e => patchLinea(li, { gross_weight_per_bulto_kg: Number(e.target.value) })} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="label text-xs">Neto TOTAL (kg) *</label>
+                      <input className="input text-sm" type="number" inputMode="decimal" step="0.001"
+                        placeholder="0.000"
+                        value={totalPesos[li]?.neto ?? ''}
+                        onChange={e => patchTotalPeso(li, { neto: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="label text-xs">Bruto TOTAL (kg)</label>
+                      <input className="input text-sm" type="number" inputMode="decimal" step="0.001"
+                        placeholder="= neto si vacío"
+                        value={totalPesos[li]?.bruto ?? ''}
+                        onChange={e => patchTotalPeso(li, { bruto: e.target.value })} />
+                    </div>
                   </div>
                 )}
+
+                {/* Resumen calculado */}
+                {(() => {
+                  const modo = modosPeso[li] ?? 'bulto'
+                  const unidades = l.tipo_bulto === 'PALLET'
+                    ? (l.qty_bultos * (l.bultos_por_pallet || 1))
+                    : l.qty_bultos
+                  const neto = modo === 'total'
+                    ? Number(totalPesos[li]?.neto) || 0
+                    : calcNeto(l)
+                  const bruto = modo === 'total'
+                    ? (Number(totalPesos[li]?.bruto) || neto)
+                    : calcBruto(l)
+                  if (!neto) return null
+                  return (
+                    <div className="text-xs text-[#00406A] font-semibold space-y-0.5">
+                      {l.tipo_bulto === 'PALLET' && l.bultos_por_pallet && l.bultos_por_pallet > 0 && (
+                        <div className="text-gray-500">
+                          {l.qty_bultos} pallets × {l.bultos_por_pallet} = {unidades} bultos
+                        </div>
+                      )}
+                      <div>Neto: {neto.toFixed(3)} kg / Bruto: {bruto.toFixed(3)} kg</div>
+                      {modo === 'total' && unidades > 0 && (
+                        <div className="text-gray-400 font-normal">
+                          ({(neto / unidades).toFixed(3)} kg/bulto)
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             ))}
 
