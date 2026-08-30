@@ -123,7 +123,8 @@ export const getClientes = () => apiFetch<Cliente[]>('/carguio/clientes')
 
 export const getTransporte = () => apiFetch<TransporteData>('/carguio/transporte')
 
-export const getRegistros = () => apiFetch<LoadingRecord[]>('/carguio/registros')
+// todos=1 incluye los FACTURADO (excluidos por defecto en el backend)
+export const getRegistros = () => apiFetch<LoadingRecord[]>('/carguio/registros?todos=1')
 
 export type ExportRow = {
   created_at: string
