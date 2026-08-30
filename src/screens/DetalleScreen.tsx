@@ -1,9 +1,67 @@
 import { useEffect, useState } from 'react'
-import { getRegistro, completarRegistro, type LoadingRecord, type LoadingVehicle } from '../api'
+import { getRegistro, completarRegistro, type LoadingRecord, type LoadingVehicle, type LoadingLine } from '../api'
 
-function fmt(kg: string | undefined) {
-  const n = parseFloat(kg ?? '0')
+function fmtKg(kg: string | number | undefined) {
+  const n = parseFloat(String(kg ?? '0'))
   return isNaN(n) ? '-' : n.toLocaleString('es-CL', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+}
+
+function fmtFecha(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('es-CL', {
+    timeZone: 'America/Santiago',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  }) + ' ' + d.toLocaleTimeString('es-CL', {
+    timeZone: 'America/Santiago',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function FilaLinea({ l }: { l: LoadingLine & { bultos_por_pallet?: number; tipo_bulto_contenido?: string; total_net_kg?: string; total_gross_kg?: string } }) {
+  const esPallet = l.tipo_bulto === 'PALLET'
+  const bpp = Number(l.bultos_por_pallet ?? 0)
+  const totalBultos = esPallet && bpp > 0 ? l.qty_bultos * bpp : l.qty_bultos
+
+  return (
+    <div className="bg-gray-50 rounded-xl p-3 space-y-2 text-sm">
+      {/* Producto */}
+      <div className="font-semibold text-gray-900 text-base">{l.product_description}</div>
+
+      {/* Tipo y cantidad */}
+      <div className="flex flex-wrap gap-2">
+        <span className="bg-[#00406A] text-white text-xs font-bold px-2 py-0.5 rounded-full">
+          {l.tipo_bulto}
+        </span>
+        {esPallet && bpp > 0 ? (
+          <span className="text-gray-700 text-xs">
+            {l.qty_bultos} {l.qty_bultos === 1 ? 'pallet' : 'pallets'} × {bpp} bultos/pallet
+            {' '}= <strong>{totalBultos} bultos</strong>
+            {l.tipo_bulto_contenido ? ` (${l.tipo_bulto_contenido})` : ''}
+          </span>
+        ) : (
+          <span className="text-gray-700 text-xs">
+            <strong>{l.qty_bultos}</strong> {l.tipo_bulto === 'PALLET' ? 'pallets' : 'bultos'}
+          </span>
+        )}
+      </div>
+
+      {/* Pesos */}
+      <div className="grid grid-cols-3 gap-2 text-xs">
+        <div className="bg-white rounded-lg p-2 border border-gray-100">
+          <div className="text-gray-400">Peso neto/bulto</div>
+          <div className="font-bold text-gray-800">{fmtKg(l.weight_per_bulto_kg)} kg</div>
+        </div>
+        <div className="bg-white rounded-lg p-2 border border-gray-100">
+          <div className="text-gray-400">Neto total</div>
+          <div className="font-bold text-[#00406A]">{fmtKg(l.total_net_kg)} kg</div>
+        </div>
+        <div className="bg-white rounded-lg p-2 border border-gray-100">
+          <div className="text-gray-400">Bruto total</div>
+          <div className="font-bold text-gray-600">{fmtKg(l.total_gross_kg)} kg</div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function DetalleScreen({ id, onVolver }: { id: number; onVolver: () => void }) {
@@ -31,9 +89,7 @@ export function DetalleScreen({ id, onVolver }: { id: number; onVolver: () => vo
   }
 
   if (cargando) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">
-      Cargando…
-    </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">Cargando…</div>
   )
 
   if (error || !data) return (
@@ -43,89 +99,98 @@ export function DetalleScreen({ id, onVolver }: { id: number; onVolver: () => vo
     </div>
   )
 
+  const statusColor: Record<string, string> = {
+    BORRADOR: 'bg-yellow-100 text-yellow-700',
+    EN_PROCESO: 'bg-blue-100 text-blue-700',
+    COMPLETADO: 'bg-green-100 text-green-700',
+    FACTURADO: 'bg-purple-100 text-purple-700',
+    ANULADO: 'bg-red-100 text-red-700',
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-[#00406A] text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-md">
         <button onClick={onVolver} className="text-white text-xl pr-2">←</button>
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="font-bold text-lg leading-tight">{data.reference_code}</div>
-          <div className="text-blue-200 text-xs">{data.partner_name}</div>
+          <div className="text-blue-200 text-xs">{fmtFecha(data.created_at)}</div>
         </div>
+        <span className={`text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap ${statusColor[data.status] ?? ''}`}>
+          {data.status}
+        </span>
       </header>
 
-      <main className="flex-1 px-3 py-4 space-y-3">
-        {/* Resumen */}
+      <main className="flex-1 px-3 py-4 space-y-4 pb-24">
+
+        {/* Totales del registro */}
         <div className="card">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <div className="text-xs text-gray-400">Camiones</div>
-              <div className="text-2xl font-bold text-[#00406A]">{data.total_vehicles}</div>
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Totales</div>
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div className="bg-[#00406A] text-white rounded-xl py-3">
+              <div className="text-xs text-blue-200">Bultos</div>
+              <div className="text-2xl font-bold">{data.total_bultos}</div>
             </div>
-            <div>
-              <div className="text-xs text-gray-400">Bultos</div>
-              <div className="text-2xl font-bold text-[#00406A]">{data.total_bultos}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Neto kg</div>
-              <div className="text-xl font-bold text-[#00406A]">{fmt(data.total_net_kg)}</div>
+            <div className="bg-[#00406A] text-white rounded-xl py-3">
+              <div className="text-xs text-blue-200">Neto kg</div>
+              <div className="text-2xl font-bold">{fmtKg(data.total_net_kg)}</div>
             </div>
           </div>
-          <div className="mt-3 text-center text-sm text-gray-500">
-            Bruto: <strong>{fmt(data.total_gross_kg)} kg</strong>
+          <div className="mt-2 text-center text-xs text-gray-400">
+            Bruto total: <strong>{fmtKg(data.total_gross_kg)} kg</strong>
           </div>
-          {data.country_destination && (
-            <div className="mt-2 text-xs text-gray-400 text-center">
-              {data.country_destination}{data.destination_port ? ` · ${data.destination_port}` : ''}
-              {data.incoterm ? ` · ${data.incoterm}` : ''}
-            </div>
-          )}
         </div>
 
         {/* Vehículos */}
         {data.vehicles.map((v, i) => (
-          <div key={v.id ?? i} className="card">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-bold text-[#00406A]">Camión {v.sequence_number}</div>
-              <div className="text-sm font-mono font-bold text-gray-700">{v.license_plate ?? '-'}</div>
-            </div>
-            <div className="text-sm text-gray-600 space-y-0.5">
-              {v.transport_company_name && <div>🏢 {v.transport_company_name}</div>}
-              {v.driver_name && <div>👤 {v.driver_name}</div>}
+          <div key={v.id ?? i} className="card space-y-3">
+
+            {/* Cabecera camión */}
+            <div className="flex items-start gap-3">
+              <div className="bg-[#00406A] text-white rounded-xl px-3 py-2 text-center min-w-[72px]">
+                <div className="text-xs text-blue-200">Patente</div>
+                <div className="font-bold text-base font-mono leading-tight">
+                  {v.license_plate ?? '—'}
+                </div>
+              </div>
+              <div className="flex-1 space-y-0.5 pt-1">
+                <div className="font-semibold text-gray-800 text-sm">
+                  {v.driver_name ?? <span className="text-gray-400">Sin conductor</span>}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {v.transport_company_name ?? <span className="text-gray-400">Sin empresa</span>}
+                </div>
+              </div>
             </div>
 
-            {/* Líneas */}
-            <div className="mt-3 space-y-2">
-              {v.lines?.map((l, li) => (
-                <div key={l.id ?? li} className="bg-gray-50 rounded-lg p-3 text-sm">
-                  <div className="font-semibold text-gray-800">{l.product_description}</div>
-                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-gray-600 text-xs">
-                    <span>{l.qty_bultos} {l.tipo_bulto}</span>
-                    <span>{parseFloat(String(l.weight_per_bulto_kg)).toFixed(3)} kg/u</span>
-                    <span className="font-semibold">Neto: {fmt(l.total_net_kg)} kg</span>
-                    <span>Bruto: {fmt(l.total_gross_kg)} kg</span>
-                  </div>
-                </div>
+            {v.observations && (
+              <div className="text-xs text-gray-500 bg-yellow-50 rounded-lg px-3 py-2">
+                📝 {v.observations}
+              </div>
+            )}
+
+            {/* Líneas de carga */}
+            <div className="space-y-2">
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Carga</div>
+              {(v.lines ?? []).map((l, li) => (
+                <FilaLinea key={l.id ?? li} l={l as LoadingLine & { bultos_por_pallet?: number; tipo_bulto_contenido?: string }} />
               ))}
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-1 text-center text-xs">
+            {/* Subtotales del vehículo */}
+            <div className="grid grid-cols-3 gap-1 text-center text-xs">
               <div className="bg-blue-50 rounded-lg py-2">
                 <div className="text-gray-400">Bultos</div>
                 <div className="font-bold text-[#00406A]">{v.total_bultos}</div>
               </div>
               <div className="bg-blue-50 rounded-lg py-2">
                 <div className="text-gray-400">Neto kg</div>
-                <div className="font-bold text-[#00406A]">{fmt(v.total_net_kg)}</div>
+                <div className="font-bold text-[#00406A]">{fmtKg(v.total_net_kg)}</div>
               </div>
               <div className="bg-blue-50 rounded-lg py-2">
                 <div className="text-gray-400">Bruto kg</div>
-                <div className="font-bold text-[#00406A]">{fmt(v.total_gross_kg)}</div>
+                <div className="font-bold text-[#00406A]">{fmtKg(v.total_gross_kg)}</div>
               </div>
             </div>
-
-            {v.observations && (
-              <div className="mt-2 text-xs text-gray-400">📝 {v.observations}</div>
-            )}
           </div>
         ))}
 
