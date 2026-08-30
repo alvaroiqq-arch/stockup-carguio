@@ -65,7 +65,7 @@ export function NuevoCarguioScreen({
   const assignmentsPorEmpresa = (companyId: number | undefined) => {
     if (!transporte) return []
     if (!companyId) return transporte.assignments
-    return transporte.assignments.filter(a => a.company_id === companyId)
+    return transporte.assignments.filter(a => Number(a.company_id) === Number(companyId))
   }
 
   const handleGuardar = async () => {
@@ -137,7 +137,7 @@ export function NuevoCarguioScreen({
 
         {vehicles.map((v, vi) => {
           const assignments = assignmentsPorEmpresa(v.transport_company_id)
-          const selectedAssignment = assignments.find(a => a.driver_id === v.driver_id)
+          const selectedAssignment = assignments.find(a => Number(a.id) === Number(v.driver_id) || (Number(a.driver_id) === Number(v.driver_id) && Number(a.truck_id) === Number(v.truck_id)))
 
           return (
             <div key={vi} className="card space-y-3">
@@ -166,7 +166,7 @@ export function NuevoCarguioScreen({
                   className="input"
                   value={selectedAssignment?.id ?? ''}
                   onChange={e => {
-                    const a = assignments.find(x => x.id === Number(e.target.value))
+                    const a = assignments.find(x => Number(x.id) === Number(e.target.value))
                     if (a) setVehicle(vi, { driver_id: a.driver_id, truck_id: a.truck_id ?? undefined })
                   }}
                 >
