@@ -16,9 +16,26 @@ const ESTADO_COLOR: Record<string, string> = {
   ANULADO: 'bg-red-100 text-red-700',
 }
 
+// Chips de filtro disponibles (null = Todos)
+const FILTROS = [
+  { label: 'Todos',      value: null },
+  { label: 'Borrador',   value: 'BORRADOR' },
+  { label: 'Completado', value: 'COMPLETADO' },
+  { label: 'Facturado',  value: 'FACTURADO' },
+] as const
+
+type FiltroEstado = typeof FILTROS[number]['value']
+
 function fmt(kg: string) {
   const n = parseFloat(kg)
   return isNaN(n) ? '-' : n.toLocaleString('es-CL', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+}
+
+function fmtFecha(iso: string) {
+  return new Date(iso).toLocaleDateString('es-CL', {
+    timeZone: 'America/Santiago',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  })
 }
 
 export function ListaScreen({
@@ -31,6 +48,7 @@ export function ListaScreen({
   const [registros, setRegistros] = useState<LoadingRecord[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
+  const [filtro, setFiltro] = useState<FiltroEstado>(null)
 
   const cargar = useCallback(async () => {
     setCargando(true); setError('')
@@ -52,6 +70,10 @@ export function ListaScreen({
     }
   }
 
+  const visibles = filtro
+    ? registros.filter(r => r.status === filtro)
+    : registros
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
@@ -68,7 +90,29 @@ export function ListaScreen({
         </button>
       </header>
 
-      <main className="flex-1 px-3 py-4 space-y-3">
+      {/* Chips de filtro */}
+      <div className="flex gap-2 px-3 pt-3 pb-1 overflow-x-auto">
+        {FILTROS.map(f => (
+          <button
+            key={String(f.value)}
+            onClick={() => setFiltro(f.value)}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              filtro === f.value
+                ? 'bg-[#00406A] text-white'
+                : 'bg-white text-gray-600 border border-gray-200'
+            }`}
+          >
+            {f.label}
+            {f.value !== null && (
+              <span className="ml-1 text-xs opacity-70">
+                ({registros.filter(r => r.status === f.value).length})
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <main className="flex-1 px-3 py-3 space-y-3">
         {cargando && (
           <div className="text-center text-gray-400 py-10">Cargando…</div>
         )}
@@ -78,17 +122,19 @@ export function ListaScreen({
             <button onClick={cargar} className="ml-2 underline">Reintentar</button>
           </div>
         )}
-        {!cargando && registros.length === 0 && !error && (
+        {!cargando && visibles.length === 0 && !error && (
           <div className="text-center text-gray-400 py-16">
             <div className="text-4xl mb-2">📦</div>
-            <div>Sin carguíos activos</div>
-            <button onClick={onNuevo} className="mt-4 btn-primary max-w-xs mx-auto block">
-              Registrar carguío
-            </button>
+            <div>{filtro ? `Sin carguíos en estado "${ESTADO_LABEL[filtro]}"` : 'Sin carguíos activos'}</div>
+            {!filtro && (
+              <button onClick={onNuevo} className="mt-4 btn-primary max-w-xs mx-auto block">
+                Registrar carguío
+              </button>
+            )}
           </div>
         )}
 
-        {registros.map(r => (
+        {visibles.map(r => (
           <div
             key={r.id}
             className="card cursor-pointer active:bg-gray-50"
@@ -99,21 +145,14 @@ export function ListaScreen({
                 <div className="font-bold text-[#00406A] text-base truncate">
                   {r.reference_code}
                 </div>
-                <div className="text-sm text-gray-700 font-medium truncate">{r.partner_name}</div>
-                {r.country_destination && (
-                  <div className="text-xs text-gray-400 mt-0.5">{r.country_destination} {r.destination_port ? `· ${r.destination_port}` : ''}</div>
-                )}
+                <div className="text-xs text-gray-400 mt-0.5">{fmtFecha(r.created_at)}</div>
               </div>
               <span className={`badge shrink-0 ${ESTADO_COLOR[r.status] ?? ''}`}>
                 {ESTADO_LABEL[r.status] ?? r.status}
               </span>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <div className="bg-gray-50 rounded-lg py-2">
-                <div className="text-xs text-gray-400">Camiones</div>
-                <div className="font-bold text-gray-800">{r.total_vehicles}</div>
-              </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-center">
               <div className="bg-gray-50 rounded-lg py-2">
                 <div className="text-xs text-gray-400">Bultos</div>
                 <div className="font-bold text-gray-800">{r.total_bultos}</div>
