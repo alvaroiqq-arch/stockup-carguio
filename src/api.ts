@@ -106,14 +106,11 @@ export type NewRecord = {
 // ── API calls ────────────────────────────────────────────────────────────────
 
 export const verificarPin = async (pin: string): Promise<boolean> => {
-  try {
-    const res = await fetch(`${BASE}/carguio/registros`, {
-      headers: { 'X-Carguio-Pin': pin },
-    })
-    return res.status !== 401
-  } catch {
-    return false
-  }
+  // Puede lanzar si hay error de red o CORS — el caller lo captura y muestra "Sin conexión"
+  const res = await fetch(`${BASE}/carguio/registros`, {
+    headers: { 'X-Carguio-Pin': pin },
+  })
+  return res.status !== 401
 }
 
 export const getClientes = () => apiFetch<Cliente[]>('/carguio/clientes')
