@@ -50,6 +50,7 @@ export function ListaScreen({
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [filtro, setFiltro] = useState<FiltroEstado>(null)
+  const [busqueda, setBusqueda] = useState('')
 
   const cargar = useCallback(async () => {
     setCargando(true); setError('')
@@ -71,9 +72,12 @@ export function ListaScreen({
     }
   }
 
-  const visibles = filtro
-    ? registros.filter(r => r.status === filtro)
-    : registros
+  const termino = busqueda.trim().toUpperCase()
+  const visibles = registros.filter(r => {
+    if (filtro && r.status !== filtro) return false
+    if (termino && !(r.license_plate ?? '').toUpperCase().includes(termino)) return false
+    return true
+  })
 
   const [exportando, setExportando] = useState(false)
 
@@ -170,7 +174,28 @@ export function ListaScreen({
         ))}
       </div>
 
-      <main className="flex-1 px-3 py-3 space-y-3">
+      {/* Búsqueda por patente */}
+      <div className="px-3 pt-1 pb-2">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+          <input
+            type="text"
+            inputMode="text"
+            placeholder="Buscar por patente…"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            className="input pl-8 text-sm"
+          />
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg leading-none"
+            >×</button>
+          )}
+        </div>
+      </div>
+
+      <main className="flex-1 px-3 py-1 space-y-3">
         {cargando && (
           <div className="text-center text-gray-400 py-10">Cargando…</div>
         )}
@@ -210,7 +235,11 @@ export function ListaScreen({
               </span>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <div className="bg-gray-50 rounded-lg py-2">
+                <div className="text-xs text-gray-400">Patente</div>
+                <div className="font-bold text-gray-800 text-xs font-mono">{r.license_plate ?? '—'}</div>
+              </div>
               <div className="bg-gray-50 rounded-lg py-2">
                 <div className="text-xs text-gray-400">Bultos</div>
                 <div className="font-bold text-gray-800">{r.total_bultos}</div>
