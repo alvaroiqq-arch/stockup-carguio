@@ -131,3 +131,15 @@ export const crearRegistro = (data: NewRecord) =>
 
 export const completarRegistro = (id: number) =>
   apiFetch<{ ok: boolean }>(`/carguio/registros/${id}/completar`, { method: 'PATCH' })
+
+export const actualizarRegistro = (id: number, data: Omit<NewRecord, 'reference_code' | 'partner_id'>) =>
+  apiFetch<{ ok: boolean }>(`/carguio/registros/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+
+export const reabrirRegistro = (id: number) =>
+  apiFetch<{ ok: boolean }>(`/carguio/registros/${id}/estado`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'BORRADOR' }),
+  })

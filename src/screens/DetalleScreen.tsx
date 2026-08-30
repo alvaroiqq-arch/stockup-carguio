@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getRegistro, completarRegistro, type LoadingRecord, type LoadingVehicle, type LoadingLine } from '../api'
+import { getRegistro, completarRegistro, reabrirRegistro, type LoadingRecord, type LoadingVehicle, type LoadingLine } from '../api'
 
 function fmtKg(kg: string | number | undefined) {
   const n = parseFloat(String(kg ?? '0'))
@@ -64,7 +64,11 @@ function FilaLinea({ l }: { l: LoadingLine & { bultos_por_pallet?: number; tipo_
   )
 }
 
-export function DetalleScreen({ id, onVolver }: { id: number; onVolver: () => void }) {
+export function DetalleScreen({ id, onVolver, onEditar }: {
+  id: number
+  onVolver: () => void
+  onEditar: (v: LoadingVehicle) => void
+}) {
   const [data, setData] = useState<(LoadingRecord & { vehicles: LoadingVehicle[] }) | null>(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
@@ -86,6 +90,22 @@ export function DetalleScreen({ id, onVolver }: { id: number; onVolver: () => vo
     } catch (e) {
       alert((e as Error).message)
     }
+  }
+
+  const handleReabrir = async () => {
+    if (!confirm('¿Reabrir este carguío para editarlo?')) return
+    try {
+      await reabrirRegistro(id)
+      const updated = await getRegistro(id)
+      setData(updated)
+    } catch (e) {
+      alert((e as Error).message)
+    }
+  }
+
+  const handleEditar = () => {
+    if (!data?.vehicles[0]) return
+    onEditar(data.vehicles[0])
   }
 
   if (cargando) return (
@@ -194,10 +214,22 @@ export function DetalleScreen({ id, onVolver }: { id: number; onVolver: () => vo
           </div>
         ))}
 
-        {/* Botón completar */}
-        {(data.status === 'BORRADOR' || data.status === 'EN_PROCESO') && (
-          <button onClick={handleCompletar} className="btn-primary bg-green-600">
-            ✓ Marcar como Completado
+        {/* Acciones según estado */}
+        {data.status === 'BORRADOR' && (
+          <div className="flex gap-2">
+            <button onClick={handleEditar}
+              className="flex-1 btn-secondary">
+              ✏️ Editar
+            </button>
+            <button onClick={handleCompletar}
+              className="flex-1 btn-primary bg-green-600">
+              ✓ Completar
+            </button>
+          </div>
+        )}
+        {data.status === 'COMPLETADO' && (
+          <button onClick={handleReabrir} className="btn-secondary">
+            ↩ Reabrir para editar
           </button>
         )}
       </main>

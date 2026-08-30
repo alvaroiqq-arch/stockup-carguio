@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  getTransporte, crearRegistro,
+  getTransporte, crearRegistro, actualizarRegistro,
   type TransporteData, type LoadingVehicle, type LoadingLine,
 } from '../api'
 
@@ -34,13 +34,20 @@ function calcBruto(l: LoadingLine) {
 }
 
 export function NuevoCarguioScreen({
-  onVolver, onGuardado,
-}: { onVolver: () => void; onGuardado: () => void }) {
+  onVolver, onGuardado, registroId, registroInicial,
+}: {
+  onVolver: () => void
+  onGuardado: () => void
+  registroId?: number                  // si viene → modo edición
+  registroInicial?: LoadingVehicle     // vehículo pre-relleno
+}) {
+  const modoEdicion = registroId !== undefined
+
   const [transporte, setTransporte] = useState<TransporteData | null>(null)
   const [cargandoDatos, setCargandoDatos] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [errorGuardar, setErrorGuardar] = useState('')
-  const [vehiculo, setVehiculoState] = useState<LoadingVehicle>(vehiculoVacio())
+  const [vehiculo, setVehiculoState] = useState<LoadingVehicle>(registroInicial ?? vehiculoVacio())
 
   useEffect(() => {
     getTransporte()
@@ -97,24 +104,29 @@ export function NuevoCarguioScreen({
       }
     }
     setErrorGuardar(''); setGuardando(true)
+    const payload = {
+      vehicles: [{
+        transport_company_id: vehiculo.transport_company_id,
+        driver_id: vehiculo.driver_id,
+        truck_id: vehiculo.truck_id,
+        observations: vehiculo.observations?.trim() || undefined,
+        lines: vehiculo.lines.map(l => ({
+          product_description: l.product_description.trim(),
+          tipo_bulto: l.tipo_bulto,
+          qty_bultos: Number(l.qty_bultos),
+          weight_per_bulto_kg: Number(l.weight_per_bulto_kg),
+          gross_weight_per_bulto_kg: Number(l.gross_weight_per_bulto_kg) || Number(l.weight_per_bulto_kg),
+          bultos_por_pallet: l.tipo_bulto === 'PALLET' ? (l.bultos_por_pallet ?? undefined) : undefined,
+          tipo_bulto_contenido: l.tipo_bulto === 'PALLET' ? (l.tipo_bulto_contenido ?? undefined) : undefined,
+        })),
+      }],
+    }
     try {
-      await crearRegistro({
-        vehicles: [{
-          transport_company_id: vehiculo.transport_company_id,
-          driver_id: vehiculo.driver_id,
-          truck_id: vehiculo.truck_id,
-          observations: vehiculo.observations?.trim() || undefined,
-          lines: vehiculo.lines.map(l => ({
-            product_description: l.product_description.trim(),
-            tipo_bulto: l.tipo_bulto,
-            qty_bultos: Number(l.qty_bultos),
-            weight_per_bulto_kg: Number(l.weight_per_bulto_kg),
-            gross_weight_per_bulto_kg: Number(l.gross_weight_per_bulto_kg) || Number(l.weight_per_bulto_kg),
-            bultos_por_pallet: l.tipo_bulto === 'PALLET' ? (l.bultos_por_pallet ?? undefined) : undefined,
-            tipo_bulto_contenido: l.tipo_bulto === 'PALLET' ? (l.tipo_bulto_contenido ?? undefined) : undefined,
-          })),
-        }],
-      })
+      if (modoEdicion && registroId !== undefined) {
+        await actualizarRegistro(registroId, payload)
+      } else {
+        await crearRegistro(payload)
+      }
       onGuardado()
     } catch (e) {
       setErrorGuardar((e as Error).message)
@@ -145,7 +157,7 @@ export function NuevoCarguioScreen({
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-[#00406A] text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-md">
         <button onClick={onVolver} className="text-white text-xl pr-2">arrow</button>
-        <div className="font-bold text-lg">Nuevo Carguio</div>
+        <div className="font-bold text-lg">{modoEdicion ? 'Editar Carguío' : 'Nuevo Carguío'}</div>
       </header>
 
       <main className="flex-1 px-3 py-4 space-y-4 pb-36">
@@ -324,7 +336,7 @@ export function NuevoCarguioScreen({
           </button>
           <button onClick={handleGuardar} disabled={guardando}
             className="flex-1 btn-primary disabled:opacity-50">
-            {guardando ? 'Guardando...' : 'Guardar carguío'}
+            {guardando ? 'Guardando...' : modoEdicion ? 'Guardar cambios' : 'Guardar carguío'}
           </button>
         </div>
       </div>
