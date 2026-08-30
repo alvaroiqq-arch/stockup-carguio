@@ -201,16 +201,16 @@ export function ListaScreen({
       </main>
 
       {/* Acciones footer */}
-      <footer className="pb-6 px-4 flex gap-2">
-        <button onClick={cargar} className="btn-secondary text-sm flex-none">
-          ↻ Actualizar
-        </button>
+      <footer className="pb-6 px-4 space-y-2">
         <button
           onClick={exportarExcel}
           disabled={visibles.length === 0}
-          className="flex-1 btn-secondary text-sm disabled:opacity-40"
+          className="w-full bg-green-700 text-white font-bold py-4 rounded-xl text-base active:opacity-70 disabled:opacity-40"
         >
-          📥 Excel ({visibles.length})
+          📥 Exportar Excel ({visibles.length} registros)
+        </button>
+        <button onClick={cargar} className="btn-secondary text-sm">
+          ↻ Actualizar
         </button>
       </footer>
     </div>
