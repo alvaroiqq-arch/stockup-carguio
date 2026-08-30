@@ -205,7 +205,7 @@ export function NuevoCarguioScreen({
                 <label className="label">Observaciones (opcional)</label>
                 <input
                   className="input"
-                  placeholder="Ej: 70 fardos fibra acrilica"
+                  placeholder="Ej: Representante que despacha en aduana"
                   value={v.observations ?? ''}
                   onChange={e => setVehicle(vi, { observations: e.target.value })}
                 />
