@@ -124,6 +124,12 @@ export function NuevoCarguioScreen({
     }
   }
 
+  const limpiarFormulario = () => {
+    if (!window.confirm('¿Limpiar todo el formulario?')) return
+    setVehicles([vehiculoVacio()])
+    setErrorGuardar('')
+  }
+
   const totalBultos = vehicles.reduce((s, v) => s + v.lines.reduce((s2, l) => s2 + (Number(l.qty_bultos) || 0), 0), 0)
   const totalNeto   = vehicles.reduce((s, v) => s + v.lines.reduce((s2, l) => s2 + calcNeto(l), 0), 0)
   const totalBruto  = vehicles.reduce((s, v) => s + v.lines.reduce((s2, l) => s2 + calcBruto(l), 0), 0)
@@ -319,9 +325,16 @@ export function NuevoCarguioScreen({
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 space-y-2 shadow-xl">
         {errorGuardar && <div className="text-red-600 text-sm font-medium">{errorGuardar}</div>}
-        <button onClick={handleGuardar} disabled={guardando} className="btn-primary disabled:opacity-50">
-          {guardando ? 'Guardando...' : 'Guardar carguio'}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={limpiarFormulario} disabled={guardando}
+            className="flex-none px-4 py-3 rounded-xl border border-gray-300 text-gray-600 text-sm font-medium disabled:opacity-50">
+            Limpiar
+          </button>
+          <button onClick={handleGuardar} disabled={guardando}
+            className="flex-1 btn-primary disabled:opacity-50">
+            {guardando ? 'Guardando...' : 'Guardar carguio'}
+          </button>
+        </div>
       </div>
     </div>
   )
