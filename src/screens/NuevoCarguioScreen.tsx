@@ -306,13 +306,16 @@ export function NuevoCarguioScreen({
                 </div>
 
                 <div>
-                  <label className="label text-xs">Producto *</label>
+                  <label className="label text-xs">Marca / Modelo *</label>
                   <input
                     className="input text-sm"
-                    placeholder="Ej: FIBRA ACRILICA 4.1"
+                    placeholder="Ej: Braskem DMDA-8907"
                     value={l.product_description}
                     onChange={e => patchLinea(li, { product_description: e.target.value })}
                   />
+                  <p className="text-[10px] text-gray-400 mt-0.5 px-1">
+                    Escribe la marca o modelo del producto (no el nombre completo)
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
