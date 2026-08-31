@@ -139,11 +139,17 @@ export function NuevoCarguioScreen({
       }
     }
     setErrorGuardar(''); setGuardando(true)
+    // Siempre releer la asignación activa del camión al guardar.
+    // Así, si el registro fue creado sin empresa/conductor y ahora sí existe
+    // una asignación, queda grabada correctamente.
+    const asigActual = vehiculo.truck_id
+      ? transporte?.assignments.find(a => Number(a.truck_id) === Number(vehiculo.truck_id))
+      : undefined
     const payload = {
       carguio_date: fechaCarguio || null,
       vehicles: [{
-        transport_company_id: vehiculo.transport_company_id,
-        driver_id: vehiculo.driver_id,
+        transport_company_id: asigActual ? Number(asigActual.company_id) : (vehiculo.transport_company_id ?? undefined),
+        driver_id: asigActual?.driver_id ?? vehiculo.driver_id,
         truck_id: vehiculo.truck_id,
         observations: vehiculo.observations?.trim() || undefined,
         lines: vehiculo.lines.map((l, li) => {

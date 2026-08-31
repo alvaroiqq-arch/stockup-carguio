@@ -6,14 +6,27 @@ function fmtKg(kg: string | number | undefined) {
   return isNaN(n) ? '-' : n.toLocaleString('es-CL', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
 }
 
+// Extrae YYYY-MM-DD del inicio del string para evitar el problema de UTC midnight.
+// Funciona con '2026-08-27' y con '2026-08-27T00:00:00.000Z'.
+function parseFechaSolo(iso: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
+  return m ? new Date(+m[1]!, +m[2]! - 1, +m[3]!) : new Date(iso)
+}
+
 function fmtFecha(iso: string) {
-  const d = new Date(iso)
+  const d = new Date(iso)   // timestamps con hora no tienen el problema UTC midnight
   return d.toLocaleDateString('es-CL', {
     timeZone: 'America/Santiago',
     day: '2-digit', month: '2-digit', year: 'numeric',
   }) + ' ' + d.toLocaleTimeString('es-CL', {
     timeZone: 'America/Santiago',
     hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function fmtFechaSolo(iso: string) {
+  return parseFechaSolo(iso).toLocaleDateString('es-CL', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
   })
 }
 
@@ -131,12 +144,7 @@ export function DetalleScreen({ id, onVolver, onEditar }: {
           <div className="font-bold text-lg leading-tight">{data.reference_code}</div>
           <div className="text-blue-200 text-xs">
             {data.carguio_date
-              ? (() => {
-                  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data.carguio_date)
-                  return m
-                    ? new Date(+m[1]!, +m[2]! - 1, +m[3]!).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                    : data.carguio_date
-                })()
+              ? fmtFechaSolo(data.carguio_date)
               : fmtFecha(data.created_at)}
           </div>
         </div>
