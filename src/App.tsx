@@ -9,7 +9,7 @@ export type Screen =
   | { name: 'lista' }
   | { name: 'nuevo' }
   | { name: 'detalle'; id: number }
-  | { name: 'editar'; id: number; vehiculo: LoadingVehicle }
+  | { name: 'editar'; id: number; vehiculo: LoadingVehicle; carguioDate: string | null }
 
 export default function App() {
   const [autenticado, setAutenticado] = useState(() => !!sessionStorage.getItem('carguio_pin'))
@@ -19,8 +19,8 @@ export default function App() {
   const irLista = useCallback(() => setScreen({ name: 'lista' }), [])
   const irNuevo = useCallback(() => setScreen({ name: 'nuevo' }), [])
   const irDetalle = useCallback((id: number) => setScreen({ name: 'detalle', id }), [])
-  const irEditar = useCallback((id: number, vehiculo: LoadingVehicle) =>
-    setScreen({ name: 'editar', id, vehiculo }), [])
+  const irEditar = useCallback((id: number, vehiculo: LoadingVehicle, carguioDate: string | null = null) =>
+    setScreen({ name: 'editar', id, vehiculo, carguioDate }), [])
 
   // Prevenir zoom accidental en iOS con double-tap
   useEffect(() => {
@@ -39,6 +39,7 @@ export default function App() {
         onGuardado={() => irDetalle(screen.id)}
         registroId={screen.id}
         registroInicial={screen.vehiculo}
+        carguioDateInicial={screen.carguioDate}
       />
     )
 
@@ -47,7 +48,7 @@ export default function App() {
       <DetalleScreen
         id={screen.id}
         onVolver={irLista}
-        onEditar={v => irEditar(screen.id, v)}
+        onEditar={(v, d) => irEditar(screen.id, v, d)}
       />
     )
 

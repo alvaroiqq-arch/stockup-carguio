@@ -63,7 +63,7 @@ function FilaLinea({ l }: { l: LoadingLine & { bultos_por_pallet?: number; tipo_
 export function DetalleScreen({ id, onVolver, onEditar }: {
   id: number
   onVolver: () => void
-  onEditar: (v: LoadingVehicle) => void
+  onEditar: (v: LoadingVehicle, carguioDate: string | null) => void
 }) {
   const [data, setData] = useState<(LoadingRecord & { vehicles: LoadingVehicle[] }) | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -101,7 +101,7 @@ export function DetalleScreen({ id, onVolver, onEditar }: {
 
   const handleEditar = () => {
     if (!data?.vehicles[0]) return
-    onEditar(data.vehicles[0])
+    onEditar(data.vehicles[0], data.carguio_date ?? null)
   }
 
   if (cargando) return (
@@ -129,7 +129,16 @@ export function DetalleScreen({ id, onVolver, onEditar }: {
         <button onClick={onVolver} className="text-white text-xl pr-2">←</button>
         <div className="flex-1 min-w-0">
           <div className="font-bold text-lg leading-tight">{data.reference_code}</div>
-          <div className="text-blue-200 text-xs">{fmtFecha(data.created_at)}</div>
+          <div className="text-blue-200 text-xs">
+            {data.carguio_date
+              ? (() => {
+                  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data.carguio_date)
+                  return m
+                    ? new Date(+m[1]!, +m[2]! - 1, +m[3]!).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    : data.carguio_date
+                })()
+              : fmtFecha(data.created_at)}
+          </div>
         </div>
         <span className={`text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap ${statusColor[data.status] ?? ''}`}>
           {data.status}

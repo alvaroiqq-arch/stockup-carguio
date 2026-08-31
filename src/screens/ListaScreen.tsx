@@ -32,8 +32,16 @@ function fmt(kg: string) {
   return isNaN(n) ? '-' : n.toLocaleString('es-CL', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
 }
 
-function fmtFecha(iso: string) {
-  return new Date(iso).toLocaleDateString('es-CL', {
+function fmtFecha(iso: string | null | undefined) {
+  if (!iso) return '—'
+  // YYYY-MM-DD (sin hora) → new Date() lo parsea como UTC midnight → en Santiago
+  // (UTC-4) aparece el día anterior. Construir la fecha en hora LOCAL directamente.
+  const s = String(iso)
+  const solo = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  const d = solo
+    ? new Date(+solo[1]!, +solo[2]! - 1, +solo[3]!)  // medianoche local
+    : new Date(s)
+  return d.toLocaleDateString('es-CL', {
     timeZone: 'America/Santiago',
     day: '2-digit', month: '2-digit', year: 'numeric',
   })

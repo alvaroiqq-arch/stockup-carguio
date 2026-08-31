@@ -37,12 +37,13 @@ function calcBruto(l: LoadingLine) {
 }
 
 export function NuevoCarguioScreen({
-  onVolver, onGuardado, registroId, registroInicial,
+  onVolver, onGuardado, registroId, registroInicial, carguioDateInicial,
 }: {
   onVolver: () => void
   onGuardado: () => void
   registroId?: number                  // si viene → modo edición
   registroInicial?: LoadingVehicle     // vehículo pre-relleno
+  carguioDateInicial?: string | null   // fecha del carguío existente (modo edición)
 }) {
   const modoEdicion = registroId !== undefined
 
@@ -52,7 +53,9 @@ export function NuevoCarguioScreen({
   const [errorGuardar, setErrorGuardar] = useState('')
   const [vehiculo, setVehiculoState] = useState<LoadingVehicle>(registroInicial ?? vehiculoVacio())
   const [fechaCarguio, setFechaCarguio] = useState<string>(
-    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' }) // YYYY-MM-DD en hora Santiago
+    // En edición: usar la fecha guardada. En nuevo: hoy en hora Santiago (en-CA = YYYY-MM-DD)
+    carguioDateInicial
+      ?? new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
   )
 
   // ── Modo de ingreso de pesos: 'bulto' (por unidad) o 'total' (suma total)
