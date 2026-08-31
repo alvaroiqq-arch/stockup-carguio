@@ -61,6 +61,7 @@ export type LoadingRecord = {
   sale_id: number | null
   created_at: string
   completed_at: string | null
+  carguio_date: string | null   // fecha real de despacho (ingresada por el bodeguero)
   // Primer vehículo (para lista y Excel)
   license_plate: string | null
   driver_name: string | null
@@ -106,6 +107,7 @@ export type NewRecord = {
   embarkation_port?: string
   incoterm?: string
   notes?: string
+  carguio_date?: string | null  // fecha real de despacho (YYYY-MM-DD)
   vehicles: LoadingVehicle[]
 }
 
@@ -128,6 +130,7 @@ export const getRegistros = () => apiFetch<LoadingRecord[]>('/carguio/registros?
 
 export type ExportRow = {
   created_at: string
+  carguio_date: string | null
   reference_code: string
   status: string
   license_plate: string | null

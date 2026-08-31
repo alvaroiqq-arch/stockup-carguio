@@ -51,6 +51,9 @@ export function NuevoCarguioScreen({
   const [guardando, setGuardando] = useState(false)
   const [errorGuardar, setErrorGuardar] = useState('')
   const [vehiculo, setVehiculoState] = useState<LoadingVehicle>(registroInicial ?? vehiculoVacio())
+  const [fechaCarguio, setFechaCarguio] = useState<string>(
+    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' }) // YYYY-MM-DD en hora Santiago
+  )
 
   // ── Modo de ingreso de pesos: 'bulto' (por unidad) o 'total' (suma total)
   const nLineas = (registroInicial ?? vehiculoVacio()).lines.length
@@ -134,6 +137,7 @@ export function NuevoCarguioScreen({
     }
     setErrorGuardar(''); setGuardando(true)
     const payload = {
+      carguio_date: fechaCarguio || null,
       vehicles: [{
         transport_company_id: vehiculo.transport_company_id,
         driver_id: vehiculo.driver_id,
@@ -220,6 +224,18 @@ export function NuevoCarguioScreen({
 
         {/* Datos del camion */}
         <div className="card space-y-3">
+
+          {/* 0. Fecha del carguío */}
+          <div>
+            <label className="label">Fecha del carguío *</label>
+            <input
+              className="input"
+              type="date"
+              value={fechaCarguio}
+              max={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })}
+              onChange={e => setFechaCarguio(e.target.value)}
+            />
+          </div>
 
           {/* 1. Patente */}
           <div>

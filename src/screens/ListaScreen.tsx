@@ -100,7 +100,7 @@ export function ListaScreen({
         const bpp = d.bultos_por_pallet ?? 1
         const totalBultos = esPallet ? d.qty_bultos * bpp : d.qty_bultos
         return {
-          'Fecha':            fmtFecha(d.created_at),
+          'Fecha':            fmtFecha(d.carguio_date ?? d.created_at),
           'Referencia':       d.reference_code,
           'Estado':           ESTADO_ES[d.status] ?? d.status,
           'Patente':          d.license_plate ?? '—',
@@ -228,7 +228,11 @@ export function ListaScreen({
                 <div className="font-bold text-[#00406A] text-base truncate">
                   {r.reference_code}
                 </div>
-                <div className="text-xs text-gray-400 mt-0.5">{fmtFecha(r.created_at)}</div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  {r.carguio_date
+                    ? fmtFecha(r.carguio_date)
+                    : fmtFecha(r.created_at)}
+                </div>
               </div>
               <span className={`badge shrink-0 ${ESTADO_COLOR[r.status] ?? ''}`}>
                 {ESTADO_LABEL[r.status] ?? r.status}
