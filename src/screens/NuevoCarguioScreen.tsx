@@ -212,8 +212,13 @@ export function NuevoCarguioScreen({
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-[#00406A] text-white px-4 py-4 flex items-center gap-3 sticky top-0 z-10 shadow-md">
-        <button onClick={onVolver} className="text-white text-xl pr-2">arrow</button>
-        <div className="font-bold text-lg">{modoEdicion ? 'Editar Carguío' : 'Nuevo Carguío'}</div>
+        <div className="font-bold text-lg flex-1">{modoEdicion ? 'Editar Carguío' : 'Nuevo Carguío'}</div>
+        <button
+          onClick={onVolver}
+          className="text-white text-sm font-semibold border border-white/60 rounded px-3 py-1.5 active:bg-white/20"
+        >
+          ✕ Salir sin grabar
+        </button>
       </header>
 
       <main className="flex-1 px-3 py-4 space-y-4 pb-36">
