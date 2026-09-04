@@ -58,15 +58,23 @@ function FilaLinea({ l }: { l: LoadingLine & { bultos_por_pallet?: number; tipo_
         )}
       </div>
 
-      {/* Pesos */}
+      {/* Pesos — neto y bruto lado a lado: por bulto arriba, totales abajo */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="bg-white rounded-lg p-2 border border-gray-100">
           <div className="text-gray-400">Peso neto/bulto</div>
-          <div className="font-bold text-gray-800">{fmtKg(l.weight_per_bulto_kg)} kg</div>
+          <div className="font-bold text-gray-800 tabular-nums">{fmtKg(l.weight_per_bulto_kg)} kg</div>
+        </div>
+        <div className="bg-white rounded-lg p-2 border border-gray-100">
+          <div className="text-gray-400">Peso bruto/bulto</div>
+          <div className="font-bold text-gray-800 tabular-nums">{fmtKg(l.gross_weight_per_bulto_kg)} kg</div>
         </div>
         <div className="bg-white rounded-lg p-2 border border-gray-100">
           <div className="text-gray-400">Neto total</div>
-          <div className="font-bold text-[#00406A]">{fmtKg(l.total_net_kg)} kg</div>
+          <div className="font-bold text-[#00406A] tabular-nums">{fmtKg(l.total_net_kg)} kg</div>
+        </div>
+        <div className="bg-white rounded-lg p-2 border border-gray-100">
+          <div className="text-gray-400">Bruto total</div>
+          <div className="font-bold text-[#00406A] tabular-nums">{fmtKg(l.total_gross_kg)} kg</div>
         </div>
       </div>
     </div>
@@ -158,14 +166,24 @@ export function DetalleScreen({ id, onVolver, onEditar }: {
         {/* Totales del registro */}
         <div className="card">
           <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Totales</div>
+          {/* Dos filas de dos y no una de tres: en tres columnas un total de
+              camión completo (35.116,000) se sale de la tarjeta. */}
           <div className="grid grid-cols-2 gap-3 text-center">
             <div className="bg-[#00406A] text-white rounded-xl py-3">
+              <div className="text-xs text-blue-200">Camiones</div>
+              <div className="text-2xl font-bold tabular-nums">{data.total_vehicles}</div>
+            </div>
+            <div className="bg-[#00406A] text-white rounded-xl py-3">
               <div className="text-xs text-blue-200">Bultos</div>
-              <div className="text-2xl font-bold">{data.total_bultos}</div>
+              <div className="text-2xl font-bold tabular-nums">{data.total_bultos}</div>
             </div>
             <div className="bg-[#00406A] text-white rounded-xl py-3">
               <div className="text-xs text-blue-200">Neto kg</div>
-              <div className="text-2xl font-bold">{fmtKg(data.total_net_kg)}</div>
+              <div className="text-2xl font-bold tabular-nums">{fmtKg(data.total_net_kg)}</div>
+            </div>
+            <div className="bg-[#00406A] text-white rounded-xl py-3">
+              <div className="text-xs text-blue-200">Bruto kg</div>
+              <div className="text-2xl font-bold tabular-nums">{fmtKg(data.total_gross_kg)}</div>
             </div>
           </div>
         </div>
@@ -207,14 +225,18 @@ export function DetalleScreen({ id, onVolver, onEditar }: {
             </div>
 
             {/* Subtotales del vehículo */}
-            <div className="grid grid-cols-2 gap-1 text-center text-xs">
+            <div className="grid grid-cols-3 gap-1 text-center text-xs">
               <div className="bg-blue-50 rounded-lg py-2">
                 <div className="text-gray-400">Bultos</div>
-                <div className="font-bold text-[#00406A]">{v.total_bultos}</div>
+                <div className="font-bold text-[#00406A] tabular-nums">{v.total_bultos}</div>
               </div>
               <div className="bg-blue-50 rounded-lg py-2">
                 <div className="text-gray-400">Neto kg</div>
-                <div className="font-bold text-[#00406A]">{fmtKg(v.total_net_kg)}</div>
+                <div className="font-bold text-[#00406A] tabular-nums">{fmtKg(v.total_net_kg)}</div>
+              </div>
+              <div className="bg-blue-50 rounded-lg py-2">
+                <div className="text-gray-400">Bruto kg</div>
+                <div className="font-bold text-[#00406A] tabular-nums">{fmtKg(v.total_gross_kg)}</div>
               </div>
             </div>
           </div>

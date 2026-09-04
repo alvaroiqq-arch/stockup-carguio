@@ -120,8 +120,10 @@ export function ListaScreen({
           'Bultos por pallet': esPallet ? bpp : '—',
           'Tipo contenido':   d.tipo_bulto_contenido ?? '—',
           'Total bultos':     totalBultos,
-          'Peso neto/bulto (kg)': parseFloat(d.weight_per_bulto_kg) || 0,
-          'Total neto (kg)':  parseFloat(d.total_net_kg) || 0,
+          'Peso neto/bulto (kg)':  parseFloat(d.weight_per_bulto_kg) || 0,
+          'Peso bruto/bulto (kg)': parseFloat(d.gross_weight_per_bulto_kg) || 0,
+          'Total neto (kg)':   parseFloat(d.total_net_kg) || 0,
+          'Total bruto (kg)':  parseFloat(d.total_gross_kg) || 0,
         }
       })
 
@@ -131,7 +133,7 @@ export function ListaScreen({
         { wch: 10 }, { wch: 28 }, { wch: 28 },
         { wch: 30 }, { wch: 12 }, { wch: 18 },
         { wch: 16 }, { wch: 14 }, { wch: 12 },
-        { wch: 20 }, { wch: 16 },
+        { wch: 20 }, { wch: 21 }, { wch: 16 }, { wch: 17 },
       ]
       const libro = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(libro, hoja, 'Carguíos')
@@ -247,18 +249,24 @@ export function ListaScreen({
               </span>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            {/* Dos filas de dos: identificación arriba, pesos abajo. En cuatro
+                columnas un total de camión completo (25.000,000) no cabe. */}
+            <div className="mt-3 grid grid-cols-2 gap-2 text-center">
               <div className="bg-gray-50 rounded-lg py-2">
                 <div className="text-xs text-gray-400">Patente</div>
                 <div className="font-bold text-gray-800 text-xs font-mono">{r.license_plate ?? '—'}</div>
               </div>
               <div className="bg-gray-50 rounded-lg py-2">
                 <div className="text-xs text-gray-400">Bultos</div>
-                <div className="font-bold text-gray-800">{r.total_bultos}</div>
+                <div className="font-bold text-gray-800 tabular-nums">{r.total_bultos}</div>
               </div>
               <div className="bg-gray-50 rounded-lg py-2">
                 <div className="text-xs text-gray-400">Neto (kg)</div>
-                <div className="font-bold text-gray-800 text-sm">{fmt(r.total_net_kg)}</div>
+                <div className="font-bold text-gray-800 text-sm tabular-nums">{fmt(r.total_net_kg)}</div>
+              </div>
+              <div className="bg-gray-50 rounded-lg py-2">
+                <div className="text-xs text-gray-400">Bruto (kg)</div>
+                <div className="font-bold text-gray-800 text-sm tabular-nums">{fmt(r.total_gross_kg)}</div>
               </div>
             </div>
 

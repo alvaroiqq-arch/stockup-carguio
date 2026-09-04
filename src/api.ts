@@ -143,7 +143,9 @@ export type ExportRow = {
   bultos_por_pallet: number | null
   tipo_bulto_contenido: string | null
   weight_per_bulto_kg: string
+  gross_weight_per_bulto_kg: string
   total_net_kg: string
+  total_gross_kg: string
 }
 
 export const getExport = () => apiFetch<ExportRow[]>('/carguio/export')
